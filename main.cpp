@@ -3,26 +3,6 @@
 #include <string>
 #include <algorithm>
 
-// Equation 11 or Section 4.1 Step 1
-std::unordered_map<int, Cell> grid;
-
-float h = 1.0; // For now
-
-float tMax = 9999999999; // Arbitrarily large number
-float tMin = 0.0; // No limit on min
-float kCFL = 1.0;
-
-float uMax = 0;
-
-std::vector<Cell> markerParticles;
-
-int xMin = -99999999; // Arbitrarily large limits
-int xMax = 99999999;
-int yMin = -99999999;
-int yMax = 99999999;
-int zMin = -99999999;
-int zMax = 99999999;
-
 struct Cell {
     float p;
     std::vector<float> u;
@@ -122,6 +102,26 @@ float getInterpolatedValue(float x, float y, float z, int index) {
 
     return sum / totalWeight;
 }
+
+// Equation 11 or Section 4.1 Step 1
+std::unordered_map<int, Cell> grid;
+
+float h = 1.0; // For now
+
+float tMax = 9999999999; // Arbitrarily large number
+float tMin = 0.0; // No limit on min
+float kCFL = 1.0;
+
+float uMax = 0;
+
+std::vector<Cell> markerParticles;
+
+int xMin = -99999999; // Arbitrarily large limits
+int xMax = 99999999;
+int yMin = -99999999;
+int yMax = 99999999;
+int zMin = -99999999;
+int zMax = 99999999;
 
 int main(void) {
     for (auto cell : grid) {
@@ -366,5 +366,14 @@ int main(void) {
         if (cell.second.layer == -1) {
             grid.erase(cell.first);
         }
+    }
+
+    for (auto cell : grid) {
+        std::vector<float> newParticlePos = traceParticle(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2], -0.1);
+        cell.second.temp = getVelocity(newParticlePos[0], newParticlePos[1], newParticlePos[2]);
+    }
+
+    for (auto cell : grid) {
+        cell.second.u = cell.second.temp;
     }
 }
