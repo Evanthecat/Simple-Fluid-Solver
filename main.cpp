@@ -7,7 +7,7 @@ struct Cell {
     float p;
     std::vector<float> u;
     std::vector<int> pos;
-    std::string cellType;
+    std::string cellType; // fluid, air, or solid
     int layer;
 
     Cell* neighbor1; // (x + 1, y, z)
@@ -122,6 +122,8 @@ int yMin = -99999999;
 int yMax = 99999999;
 int zMin = -99999999;
 int zMax = 99999999;
+
+float g = 9.81;
 
 int main(void) {
     for (auto cell : grid) {
@@ -368,6 +370,7 @@ int main(void) {
         }
     }
 
+    // Apply convection with backwards particle trace or Section 4.1 Step 3a
     for (auto cell : grid) {
         std::vector<float> newParticlePos = traceParticle(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2], -0.1);
         cell.second.temp = getVelocity(newParticlePos[0], newParticlePos[1], newParticlePos[2]);
@@ -375,5 +378,20 @@ int main(void) {
 
     for (auto cell : grid) {
         cell.second.u = cell.second.temp;
+    }
+    
+    // Apply external forces or Section 4.1 Step 3b
+    // Assuming that z is the up/down direction and that velocity components in air or solid celltypes but bordering fluids are to be affected
+    for (auto cell : grid) {
+        if (cell.second.cellType == "fluid") {
+            cell.second.u[2] -= g;
+        }
+        else {
+            int neighborKey = 541 * cell.second.pos[0] + 79 * cell.second.pos[1] + 31 * (cell.second.pos[2] - 1);
+
+            if (grid.count(neighborKey) && grid[neighborKey].cellType == "fluid") {
+                cell.second.u[2] -= g;
+            }
+        }
     }
 }
