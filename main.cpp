@@ -39,8 +39,13 @@ struct MarkerParticle {
     {}
 };
 
+// Hash function from Section 3.1, Equation 10
 int hashFunction(int x, int y, int z) {
     return 541 * x + 79 * y + 31 * z
+}
+
+void applyViscosity() {
+    // TODO
 }
 
 // Trace a particle from point (x, y, z) for t time using RK2
