@@ -39,6 +39,10 @@ struct MarkerParticle {
     {}
 };
 
+int hashFunction(int x, int y, int z) {
+    return 541 * x + 79 * y + 31 * z
+}
+
 // Trace a particle from point (x, y, z) for t time using RK2
 std::vector<float> traceParticle(float x, float y, float z, float t) {
     std::vector<float> V = getVelocity(x, y, z);
@@ -59,7 +63,7 @@ float getInterpolatedValue(float x, float y, float z, int index) {
     int j = floor(y);
     int k = floor(z);
 
-    Cell currentCell = grid[541 * i + 79 * j + 31 * k];
+    Cell currentCell = grid[hashFunction(i, j, k)];
 
     // Assuming that currentCell exists
     float sum = (i + 1 - x) * (j + 1 - y) * (k + 1 - z) * currentCell.u[index];
@@ -146,7 +150,7 @@ int main(void) {
         int particleCellY = int(particle.pos[1]);
         int particleCellZ = int(particle.pos[2]);
 
-        int cellKey = 541 * particleCellX + 79 * particleCellY + 31 * particleCellZ;
+        int cellKey = hashFunction(particleCellX, particleCellY, particleCellZ);
 
         if (!grid.count(cellKey)) {
             if (xMin < particleCellX < xMax && yMin < particleCellY < yMax && zMin < particleCellZ < zMax) {
@@ -192,7 +196,7 @@ int main(void) {
                             break;
                     }
 
-                    int neighborKey = 541 * neighborX + 79 * neighborY + 31 * neighborZ;
+                    int neighborKey = hashFunction(neighborX, neighborY, neighborZ);
 
                     if (grid.count(neighborKey)) {
                         switch (i)
@@ -267,7 +271,7 @@ int main(void) {
                             break;
                     }
 
-                    int neighborKey = 541 * neighborX + 79 * neighborY + 31 * neighborZ;
+                    int neighborKey = hashFunction(neighborX, neighborY, neighborZ);
 
                     if (grid.count(neighborKey)) {
                         if (grid[neighborKey].layer == -1 && grid[neighborKey].cellType != "solid") {
@@ -325,7 +329,7 @@ int main(void) {
                                     break;
                             }
 
-                            int neighborKey = 541 * affectedX + 79 * affectedY + 31 * affectedZ;
+                            int neighborKey = hashFunction(affectedX, affectedY, affectedZ);
 
                             if (grid.count(neighborKey)) {
                                 switch (i)
@@ -387,7 +391,7 @@ int main(void) {
             cell.second.u[2] -= g;
         }
         else {
-            int neighborKey = 541 * cell.second.pos[0] + 79 * cell.second.pos[1] + 31 * (cell.second.pos[2] - 1);
+            int neighborKey = hashFunction(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2] - 1);
 
             if (grid.count(neighborKey) && grid[neighborKey].cellType == "fluid") {
                 cell.second.u[2] -= g;
