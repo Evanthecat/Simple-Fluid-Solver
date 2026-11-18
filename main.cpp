@@ -39,6 +39,10 @@ struct MarkerParticle {
     {}
 };
 
+bool isBorderingFluid() {
+    // TODO
+}
+
 // Hash function from Section 3.1, Equation 10
 int hashFunction(int x, int y, int z) {
     return 541 * x + 79 * y + 31 * z;
@@ -46,9 +50,12 @@ int hashFunction(int x, int y, int z) {
 
 void applyViscosity(int x, int y, int z) {
     float sumX = 0.0;
+    bool currentIsFluid = grid[hashFunction(x, y, z)].cellType == "fluid";
 
     if (grid.count(hashFunction(x + 1, y, z))) {
-        // TODO
+        if (currentIsFluid || isBorderingFluid(x + 1, y, z)) {
+            // TODO
+        }
     }
 
     // TODO
