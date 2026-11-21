@@ -39,26 +39,128 @@ struct MarkerParticle {
     {}
 };
 
-bool isBorderingFluid() {
-    // TODO
-}
-
 // Hash function from Section 3.1, Equation 10
 int hashFunction(int x, int y, int z) {
     return 541 * x + 79 * y + 31 * z;
 }
 
-void applyViscosity(int x, int y, int z) {
-    float sumX = 0.0;
-    bool currentIsFluid = grid[hashFunction(x, y, z)].cellType == "fluid";
 
+// Assuming z is up/down
+std::vector<float> calculateViscosity(int x, int y, int z, float deltaT, float kinematicViscosity) {
+    bool currentIsFluid = grid[hashFunction(x, y, z)].cellType == "fluid";
+    float sumX = 0.0;
+
+    // Optimize this later
+    // Calculate Laplacian
     if (grid.count(hashFunction(x + 1, y, z))) {
-        if (currentIsFluid || isBorderingFluid(x + 1, y, z)) {
-            // TODO
+        if (currentIsFluid || grid[hashFunction(x + 1, y, z)].cellType == "fluid") {
+            sumX += grid[hashFunction(x + 1, y, z)].u[0];
+        }
+    }
+    if (grid.count(hashFunction(x - 1, y, z))) {
+        if (grid[hashFunction(x - 1, y, z)].cellType == "fluid" || grid.count(hashFunction(x - 2, y, z)) && grid[hashFunction(x - 2, y, z)].cellType == "fluid") {
+            sumX += grid[hashFunction(x - 1, y, z)].u[0];
+        }
+    }
+    if (grid.count(hashFunction(x, y + 1, z))) {
+        if (grid[hashFunction(x, y + 1, z)].cellType == "fluid" || grid.count(hashFunction(x - 1, y + 1, z)) && grid[hashFunction(x - 1, y + 1, z)].cellType == "fluid") {
+            sumX += grid[hashFunction(x, y + 1, z)].u[0];
+        }
+    }
+    if (grid.count(hashFunction(x, y - 1, z))) {
+        if (grid[hashFunction(x, y - 1, z)].cellType == "fluid" || grid.count(hashFunction(x - 1, y - 1, z)) && grid[hashFunction(x - 1, y - 1, z)].cellType == "fluid") {
+            sumX += grid[hashFunction(x, y - 1, z)].u[0];
+        }
+    }
+    if (grid.count(hashFunction(x, y, z + 1))) {
+        if (grid[hashFunction(x, y, z + 1)].cellType == "fluid" || grid.count(hashFunction(x - 1, y, z + 1)) && grid[hashFunction(x - 1, y, z + 1)].cellType == "fluid") {
+            sumX += grid[hashFunction(x, y, z + 1)].u[0];
+        }
+    }
+    if (grid.count(hashFunction(x, y, z - 1))) {
+        if (grid[hashFunction(x, y, z - 1)].cellType == "fluid" || grid.count(hashFunction(x - 1, y, z - 1)) && grid[hashFunction(x - 1, y, z - 1)].cellType == "fluid") {
+            sumX += grid[hashFunction(x, y, z - 1)].u[0];
         }
     }
 
-    // TODO
+    sumX -= 6 * grid[hashFunction(x, y, z)].u[0];
+
+    float sumY = 0.0;
+
+    if (grid.count(hashFunction(x, y + 1, z))) {
+        if (currentIsFluid || grid[hashFunction(x, y + 1, z)].cellType == "fluid") {
+            sumY += grid[hashFunction(x, y + 1, z)].u[1];
+        }
+    }
+    if (grid.count(hashFunction(x, y - 1, z))) {
+        if (grid[hashFunction(x, y - 1, z)].cellType == "fluid" || grid.count(hashFunction(x, y - 2, z)) && grid[hashFunction(x, y - 2, z)].cellType == "fluid") {
+            sumY += grid[hashFunction(x, y - 1, z)].u[1];
+        }
+    }
+    if (grid.count(hashFunction(x + 1, y, z))) {
+        if (grid[hashFunction(x + 1, y, z)].cellType == "fluid" || grid.count(hashFunction(x + 1, y - 1, z)) && grid[hashFunction(x + 1, y - 1, z)].cellType == "fluid") {
+            sumY += grid[hashFunction(x + 1, y, z)].u[1];
+        }
+    }
+    if (grid.count(hashFunction(x - 1, y, z))) {
+        if (grid[hashFunction(x - 1, y, z)].cellType == "fluid" || grid.count(hashFunction(x - 1, y - 1, z)) && grid[hashFunction(x - 1, y - 1, z)].cellType == "fluid") {
+            sumY += grid[hashFunction(x - 1, y, z)].u[1];
+        }
+    }
+    if (grid.count(hashFunction(x, y, z + 1))) {
+        if (grid[hashFunction(x, y, z + 1)].cellType == "fluid" || grid.count(hashFunction(x, y - 1, z + 1)) && grid[hashFunction(x, y - 1, z + 1)].cellType == "fluid") {
+            sumY += grid[hashFunction(x, y, z + 1)].u[1];
+        }
+    }
+    if (grid.count(hashFunction(x, y, z - 1))) {
+        if (grid[hashFunction(x, y, z - 1)].cellType == "fluid" || grid.count(hashFunction(x, y - 1, z - 1)) && grid[hashFunction(x, y - 1, z - 1)].cellType == "fluid") {
+            sumY += grid[hashFunction(x, y, z - 1)].u[1];
+        }
+    }
+
+    sumY -= 6 * grid[hashFunction(x, y, z)].u[1];
+
+    float sumZ = 0.0;
+
+    if (grid.count(hashFunction(x, y, z + 1))) {
+        if (currentIsFluid || grid[hashFunction(x, y, z + 1)].cellType == "fluid") {
+            sumZ += grid[hashFunction(x, y, z + 1)].u[2];
+        }
+    }
+    if (grid.count(hashFunction(x, y, z - 1))) {
+        if (grid[hashFunction(x, y, z - 1)].cellType == "fluid" || grid.count(hashFunction(x, y, z - 2)) && grid[hashFunction(x, y, z - 2)].cellType == "fluid") {
+            sumZ += grid[hashFunction(x, y, z - 1)].u[2];
+        }
+    }
+    if (grid.count(hashFunction(x + 1, y, z))) {
+        if (grid[hashFunction(x + 1, y, z)].cellType == "fluid" || grid.count(hashFunction(x + 1, y, z - 1)) && grid[hashFunction(x + 1, y, z - 1)].cellType == "fluid") {
+            sumZ += grid[hashFunction(x + 1, y, z)].u[2];
+        }
+    }
+    if (grid.count(hashFunction(x - 1, y, z))) {
+        if (grid[hashFunction(x - 1, y, z)].cellType == "fluid" || grid.count(hashFunction(x - 1, y, z - 1)) && grid[hashFunction(x - 1, y, z - 1)].cellType == "fluid") {
+            sumZ += grid[hashFunction(x - 1, y, z)].u[2];
+        }
+    }
+    if (grid.count(hashFunction(x, y + 1, z))) {
+        if (grid[hashFunction(x, y + 1, z)].cellType == "fluid" || grid.count(hashFunction(x, y + 1, z - 1)) && grid[hashFunction(x, y + 1, z - 1)].cellType == "fluid") {
+            sumZ += grid[hashFunction(x, y + 1, z)].u[2];
+        }
+    }
+    if (grid.count(hashFunction(x, y - 1, z))) {
+        if (grid[hashFunction(x, y - 1, z)].cellType == "fluid" || grid.count(hashFunction(x, y - 1, z - 1)) && grid[hashFunction(x, y - 1, z - 1)].cellType == "fluid") {
+            sumZ += grid[hashFunction(x, y - 1, z)].u[2];
+        }
+    }
+
+    sumZ -= 6 * grid[hashFunction(x, y, z)].u[2];
+
+    // Calculate added viscosity
+    float addedViscosityX = deltaT * kinematicViscosity * sumX;
+    float addedViscosityY = deltaT * kinematicViscosity * sumY;
+    float addedViscosityZ = deltaT * kinematicViscosity * sumZ;
+
+    return {addedViscosityX, addedViscosityY, addedViscosityZ};
 }
 
 // Trace a particle from point (x, y, z) for t time using RK2
@@ -146,6 +248,9 @@ int zMin = -99999999;
 int zMax = 99999999;
 
 float g = 9.81;
+
+float deltaT = 0.1;
+float kinematicViscosity = 0.0;
 
 int main(void) {
     for (auto cell : grid) {
@@ -415,5 +520,20 @@ int main(void) {
                 cell.second.u[2] -= g;
             }
         }
+    }
+    
+    // Apply viscosity or Section 4.1 Step 3c
+    for (auto cell : grid) {
+        int x = cell.second.pos[0];
+        int y = cell.second.pos[1];
+        int z = cell.second.pos[2];
+
+        cell.second.temp = calculateViscosity(x, y, z, deltaT, kinematicViscosity);
+    }
+
+    for (auto cell : grid) {
+        cell.second.u[0] += cell.second.temp[0];
+        cell.second.u[1] += cell.second.temp[1];
+        cell.second.u[2] += cell.second.temp[2];
     }
 }
