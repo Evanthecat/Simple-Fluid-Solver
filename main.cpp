@@ -27,6 +27,7 @@ struct Cell {
     bool neighbor7Exists = false;
 
     std::vector<float> temp;
+    int tempInt; // For pressure solve
 
     Cell(std::vector<int> pos, std::string cellType, int layer, float p = 0.0f, std::vector<float> u = {0.0f, 0.0f, 0.0f}) : p(p), u(u), pos(pos), cellType(cellType), layer(layer)
     {}
@@ -252,6 +253,10 @@ float g = 9.81;
 float deltaT = 0.1;
 float kinematicViscosity = 0.0;
 
+float density = 1.0;
+
+float pAtm = 1.0; // Change later
+
 int main(void) {
     for (auto cell : grid) {
         float cellVelocity = sqrt(pow(cell.second.u[0], 2) + pow(cell.second.u[1], 2) + pow(cell.second.u[2], 2));
@@ -262,6 +267,7 @@ int main(void) {
 
     float deltaT = kCFL * h / abs(uMax);
 
+    // TODO: fix pointer error or something
     // Dynamic Grid Update or Section 4.1 Step 2
     for (auto cell : grid) {
         cell.second.layer = -1;
@@ -536,4 +542,90 @@ int main(void) {
         cell.second.u[1] += cell.second.temp[1];
         cell.second.u[2] += cell.second.temp[2];
     }
+
+    // Calculate pressure or Section 4.1 Step 3d
+    std::vector<float, float> A; // row, column assuming a NxN matrix where N = # fluid cells
+    std::vector<float> B;
+
+    int i = 0;
+    for (auto cell : grid) {
+        if (cell.second.cellType == "fluid") {
+            int nonSolidNeighbors = 0;
+            int airNeighbors = 0;
+
+            int neighborX = cell.second.pos[0];
+            int neighborY = cell.second.pos[1];
+            int neighborZ = cell.second.pos[2];
+
+            for (int j = 0; j < 6; j++) {
+                switch (j)
+                {
+                    case 0:
+                        neighborX++;
+                        break;
+                    case 1:
+                        neighborX--;
+                        break;
+                    case 2:
+                        neighborY++;
+                        break;
+                    case 3:
+                        neighborY--;
+                        break;
+                    case 4:
+                        neighborZ++;
+                        break;
+                    case 5:
+                        neighborZ--;
+                        break;
+                    
+                    default:
+                        break;
+                }
+
+                A[i, grid[hashFunction(neighborX, neighborY, neighborZ)].tempInt] = 0;
+
+                if (grid[hashFunction(neighborX, neighborY, neighborZ)].cellType != "solid") {
+                    nonSolidNeighbors++;
+
+                    if (grid[hashFunction(neighborX, neighborY, neighborZ)].cellType == "fluid") {
+                        A[i, grid[hashFunction(neighborX, neighborY, neighborZ)].tempInt] = 1;
+                    }
+                    else { // if air
+                        airNeighbors++;
+                    }
+                }
+            }
+
+            // No check for existing neighbors is needed because these are fluid cells
+            int currentCellX = cell.second.pos[0];
+            int currentCellY = cell.second.pos[1];
+            int currentCellZ = cell.second.pos[2];
+
+            float divergence = -cell.second.u[0];
+
+            if (grid[hashFunction(currentCellX + 1, currentCellY, currentCellZ)].cellType != "solid") {
+                divergence += grid[hashFunction(currentCellX + 1, currentCellY, currentCellZ)].u[0];
+            }
+
+            divergence -= cell.second.u[1];
+
+            if (grid[hashFunction(currentCellX, currentCellY + 1, currentCellZ)].cellType != "solid") {
+                divergence += grid[hashFunction(currentCellX, currentCellY + 1, currentCellZ)].u[1];
+            }
+
+            divergence -= cell.second.u[2];
+
+            if (grid[hashFunction(currentCellX, currentCellY, currentCellZ + 1)].cellType != "solid") {
+                divergence += grid[hashFunction(currentCellX, currentCellY, currentCellZ + 1)].u[2];
+            }
+
+            B[i] = density * h / deltaT * divergence - airNeighbors * pAtm;
+
+            cell.second.tempInt = i;
+            i++;
+        }
+    }
+
+
 }
