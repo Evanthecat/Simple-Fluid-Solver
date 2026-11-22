@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include <string>
 #include <algorithm>
+#include "libraries/eigen-5.0.1/Eigen/IterativeLinearSolvers"
 
 struct Cell {
     float p;
@@ -29,6 +30,8 @@ struct Cell {
     std::vector<float> temp;
     int tempInt; // For pressure solve
 
+    Cell(){}
+
     Cell(std::vector<int> pos, std::string cellType, int layer, float p = 0.0f, std::vector<float> u = {0.0f, 0.0f, 0.0f}) : p(p), u(u), pos(pos), cellType(cellType), layer(layer)
     {}
 };
@@ -39,6 +42,35 @@ struct MarkerParticle {
     MarkerParticle(float pos) : pos(pos)
     {}
 };
+
+// Equation 11 or Section 4.1 Step 1
+std::unordered_map<int, Cell> grid;
+
+float h = 1.0; // For now
+
+float tMax = 9999999999; // Arbitrarily large number
+float tMin = 0.0; // No limit on min
+float kCFL = 1.0;
+
+float uMax = 0;
+
+std::vector<Cell> markerParticles;
+
+int xMin = -99999999; // Arbitrarily large limits
+int xMax = 99999999;
+int yMin = -99999999;
+int yMax = 99999999;
+int zMin = -99999999;
+int zMax = 99999999;
+
+float g = 9.81;
+
+float deltaT = 0.1;
+float kinematicViscosity = 0.0;
+
+float density = 1.0;
+
+float pAtm = 1.0; // Change later
 
 // Hash function from Section 3.1, Equation 10
 int hashFunction(int x, int y, int z) {
@@ -164,6 +196,10 @@ std::vector<float> calculateViscosity(int x, int y, int z, float deltaT, float k
     return {addedViscosityX, addedViscosityY, addedViscosityZ};
 }
 
+std::vector<float> traceParticle(float x, float y, float z, float t);
+std::vector<float> getVelocity(float x, float y, float z);
+float getInterpolatedValue(float x, float y, float z, int index);
+
 // Trace a particle from point (x, y, z) for t time using RK2
 std::vector<float> traceParticle(float x, float y, float z, float t) {
     std::vector<float> V = getVelocity(x, y, z);
@@ -177,6 +213,7 @@ std::vector<float> getVelocity(float x, float y, float z) {
     V[0] = getInterpolatedValue(x / h, y / h - 0.5, z / h - 0.5, 0);
     V[1] = getInterpolatedValue(x / h - 0.5, y / h, z / h - 0.5, 1);
     V[2] = getInterpolatedValue(x / h - 0.5, y / h - 0.5, z / h, 2);
+    return V;
 }
 
 float getInterpolatedValue(float x, float y, float z, int index) {
@@ -228,35 +265,6 @@ float getInterpolatedValue(float x, float y, float z, int index) {
     return sum / totalWeight;
 }
 
-// Equation 11 or Section 4.1 Step 1
-std::unordered_map<int, Cell> grid;
-
-float h = 1.0; // For now
-
-float tMax = 9999999999; // Arbitrarily large number
-float tMin = 0.0; // No limit on min
-float kCFL = 1.0;
-
-float uMax = 0;
-
-std::vector<Cell> markerParticles;
-
-int xMin = -99999999; // Arbitrarily large limits
-int xMax = 99999999;
-int yMin = -99999999;
-int yMax = 99999999;
-int zMin = -99999999;
-int zMax = 99999999;
-
-float g = 9.81;
-
-float deltaT = 0.1;
-float kinematicViscosity = 0.0;
-
-float density = 1.0;
-
-float pAtm = 1.0; // Change later
-
 int main(void) {
     for (auto cell : grid) {
         float cellVelocity = sqrt(pow(cell.second.u[0], 2) + pow(cell.second.u[1], 2) + pow(cell.second.u[2], 2));
@@ -282,7 +290,7 @@ int main(void) {
         int cellKey = hashFunction(particleCellX, particleCellY, particleCellZ);
 
         if (!grid.count(cellKey)) {
-            if (xMin < particleCellX < xMax && yMin < particleCellY < yMax && zMin < particleCellZ < zMax) {
+            if (xMin < particleCellX && particleCellX < xMax && yMin < particleCellY && particleCellY < yMax && zMin < particleCellZ && particleCellZ < zMax) {
                 Cell newCell({particleCellX, particleCellY, particleCellZ}, "fluid", 0);
 
                 grid.insert({cellKey, newCell});
@@ -411,7 +419,7 @@ int main(void) {
                     else {
                         Cell newNeighborCell({neighborX, neighborY, neighborZ}, "", i);
 
-                        if (xMin < neighborX < xMax && yMin < neighborY < yMax && zMin < neighborZ < zMax) {
+                        if (xMin < neighborX && neighborX < xMax && yMin < neighborY && neighborY < yMax && zMin < neighborZ && neighborZ < zMax) {
                             newNeighborCell.cellType = "air";
                         }
                         else {
@@ -544,7 +552,7 @@ int main(void) {
     }
 
     // Calculate pressure or Section 4.1 Step 3d
-    std::vector<float, float> A; // row, column assuming a NxN matrix where N = # fluid cells
+    std::vector<std::vector<float>> A; // row, column assuming a NxN matrix where N = # fluid cells
     std::vector<float> B;
 
     int i = 0;
@@ -583,13 +591,13 @@ int main(void) {
                         break;
                 }
 
-                A[i, grid[hashFunction(neighborX, neighborY, neighborZ)].tempInt] = 0;
+                A[i][grid[hashFunction(neighborX, neighborY, neighborZ)].tempInt] = 0;
 
                 if (grid[hashFunction(neighborX, neighborY, neighborZ)].cellType != "solid") {
                     nonSolidNeighbors++;
 
                     if (grid[hashFunction(neighborX, neighborY, neighborZ)].cellType == "fluid") {
-                        A[i, grid[hashFunction(neighborX, neighborY, neighborZ)].tempInt] = 1;
+                        A[i][grid[hashFunction(neighborX, neighborY, neighborZ)].tempInt] = 1;
                     }
                     else { // if air
                         airNeighbors++;
@@ -627,5 +635,5 @@ int main(void) {
         }
     }
 
-
+    
 }
