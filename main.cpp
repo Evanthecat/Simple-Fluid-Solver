@@ -552,8 +552,8 @@ int main(void) {
     }
 
     // Calculate pressure or Section 4.1 Step 3d
-    std::vector<std::vector<float>> A; // row, column assuming a NxN matrix where N = # fluid cells
-    std::vector<float> B;
+    Eigen::SparseMatrix<double> A; // row, column assuming a NxN matrix where N = # fluid cells
+    Eigen::VectorXd B, P; // idk if it needs B(something)
 
     int i = 0;
     for (auto cell : grid) {
@@ -635,5 +635,7 @@ int main(void) {
         }
     }
 
-    
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower|Eigen::Upper> cg;
+    cg.compute(A);
+    P = cg.solve(B);
 }
