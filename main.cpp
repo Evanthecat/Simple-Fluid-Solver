@@ -679,6 +679,9 @@ int main(void) {
         for (auto cell : grid) {
             if (cell.second.layer == -1) {
                 // Assuming neighbors means the six cells directly neighboring the current cell
+                int neighborCount = 0;
+                std::vector<float> totalNeighborVelocity = 0.0;
+                
                 for (int j = 0; j < 6; j++) {
                     int neighborX = cell.second.pos[0];
                     int neighborY = cell.second.pos[1];
@@ -710,9 +713,15 @@ int main(void) {
                     }
 
                     if (grid[hashFunction(neighborX, neighborY, neighborZ)].layer == i - 1) {
+                        neighborCount++;
                         
+                        totalNeighborVelocity[0] += grid[hashFunction(neighborX, neighborY, neighborZ)].u[0];
+                        totalNeighborVelocity[1] += grid[hashFunction(neighborX, neighborY, neighborZ)].u[1];
+                        totalNeighborVelocity[2] += grid[hashFunction(neighborX, neighborY, neighborZ)].u[2];
                     }
                 }
+
+                if (cell.
             }
         }
     }
