@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include <string>
 #include <algorithm>
+#include <cmath>
 #include "libraries/eigen-5.0.1/Eigen/IterativeLinearSolvers"
 
 struct Cell {
@@ -375,7 +376,8 @@ int main(void) {
     }
 
     // Create a buffer zone around the fluid
-    for (int i = 0; i < std::max(2.0f, kCFL) + 1; i++) { // TODO: Check if symbols around kCFL do anything later and fix loop
+    // + 1 here might be problamatic depending on meaning of paper
+    for (int i = 0; i < std::max(2, std::ceil(kCFL)) + 1; i++) {
         for (auto cell : grid) {
             if ((cell.second.cellType == "fluid" || cell.second.cellType == "air") && cell.second.layer == i - 1) {
                 for (int j = 0; j < 6; j++) {
@@ -638,4 +640,80 @@ int main(void) {
     Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower|Eigen::Upper> cg;
     cg.compute(A);
     P = cg.solve(B);
+
+    for (auto cell : grid) {
+        if (cell.second.cellType == "fluid") {
+            cell.second.p = P[cell.second.tempInt];
+        }
+    }
+
+    //  Apply pressure or Section 4.1 Step 3e
+    for (auto cell : grid) {
+        if (cell.second.cellType == "fluid") {
+            if (grid[hashFunction(cell.second.pos[0] - 1, cell.second.pos[1], cell.second.pos[2])] != "solid") {
+                cell.second.u[0] = cell.second.u[0] - deltaT / (density * h) * (
+                    cell.second.p - grid[hashFunction(cell.second.pos[0] - 1, cell.second.pos[1], cell.second.pos[2])].p);
+            }
+            if (grid[hashFunction(cell.second.pos[0], cell.second.pos[1] - 1, cell.second.pos[2])] != "solid") {
+                cell.second.u[1] = cell.second.u[1] - deltaT / (density * h) * (
+                    cell.second.p - grid[hashFunction(cell.second.pos[0], cell.second.pos[1] - 1, cell.second.pos[2])].p);
+            }
+            if (grid[hashFunction(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2] - 1)] != "solid") {
+                cell.second.u[2] = cell.second.u[2] - deltaT / (density * h) * (
+                    cell.second.p - grid[hashFunction(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2] - 1)].p);
+            }
+        }
+    }
+
+    // Extrapolate fluid velocities into surrounding cells or Section 4.1 Step 3f
+    for (auto cell : grid) {
+        if (cell.second.cellType == "fluid) {
+            cell.second.layer = 0;
+        }
+        else {
+            cell.second.layer = -1;
+        }
+    }
+
+    for (int i = 0; i < std::max(2, std::ceil(kCFL)) + 1; i++) {
+        for (auto cell : grid) {
+            if (cell.second.layer == -1) {
+                // Assuming neighbors means the six cells directly neighboring the current cell
+                for (int j = 0; j < 6; j++) {
+                    int neighborX = cell.second.pos[0];
+                    int neighborY = cell.second.pos[1];
+                    int neighborZ = cell.second.pos[2];
+
+                    switch (j)
+                    {
+                        case 0:
+                            neighborX++;
+                            break;
+                        case 1:
+                            neighborY++;
+                            break;
+                        case 2:
+                            neighborZ++;
+                            break;
+                        case 3:
+                            neighborX--;
+                            break;
+                        case 4:
+                            neighborY--;
+                            break;
+                        case 5:
+                            neighborZ--;
+                            break;
+                        
+                        default:
+                            break;
+                    }
+
+                    if (grid[hashFunction(neighborX, neighborY, neighborZ)].layer == i - 1) {
+                        
+                    }
+                }
+            }
+        }
+    }
 }
