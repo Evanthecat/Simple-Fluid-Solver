@@ -55,7 +55,7 @@ float kCFL = 1.0;
 
 float uMax = 0;
 
-std::vector<Cell> markerParticles;
+std::vector<MarkerParticle> markerParticles;
 
 int xMin = -99999999; // Arbitrarily large limits
 int xMax = 99999999;
@@ -515,7 +515,7 @@ int main(void) {
 
     // Apply convection with backwards particle trace or Section 4.1 Step 3a
     for (auto cell : grid) {
-        std::vector<float> newParticlePos = traceParticle(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2], -0.1);
+        std::vector<float> newParticlePos = traceParticle(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2], -deltaT);
         cell.second.temp = getVelocity(newParticlePos[0], newParticlePos[1], newParticlePos[2]);
     }
 
@@ -761,5 +761,11 @@ int main(void) {
                 grid[hashFunction(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2] + 1)].u[1] = 0;
             }
         }
+    }
+
+    // Move the marker particles through the velocity field or Section 4.1 Step 4
+    // TODO: check for frame boundaries after update loop is implemented
+    for (auto particle : markerParticles) {
+        particle.pos = traceParticle(particle.pos[0], particle.pos[1], particle.pos[2], deltaT);
     }
 }
