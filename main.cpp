@@ -377,7 +377,7 @@ int main(void) {
 
     // Create a buffer zone around the fluid
     // + 1 here might be problamatic depending on meaning of paper
-    for (int i = 0; i < std::max(2, std::ceil(kCFL)) + 1; i++) {
+    for (int i = 0; i < std::max(2, int(std::ceil(kCFL))) + 1; i++) {
         for (auto cell : grid) {
             if ((cell.second.cellType == "fluid" || cell.second.cellType == "air") && cell.second.layer == i - 1) {
                 for (int j = 0; j < 6; j++) {
@@ -593,13 +593,13 @@ int main(void) {
                         break;
                 }
 
-                A[i][grid[hashFunction(neighborX, neighborY, neighborZ)].tempInt] = 0;
+                A.coeffRef(i, grid[hashFunction(neighborX, neighborY, neighborZ)].tempInt) = 0;
 
                 if (grid[hashFunction(neighborX, neighborY, neighborZ)].cellType != "solid") {
                     nonSolidNeighbors++;
 
                     if (grid[hashFunction(neighborX, neighborY, neighborZ)].cellType == "fluid") {
-                        A[i][grid[hashFunction(neighborX, neighborY, neighborZ)].tempInt] = 1;
+                        A.coeffRef(i, grid[hashFunction(neighborX, neighborY, neighborZ)].tempInt) = 1;
                     }
                     else { // if air
                         airNeighbors++;
@@ -650,15 +650,15 @@ int main(void) {
     //  Apply pressure or Section 4.1 Step 3e
     for (auto cell : grid) {
         if (cell.second.cellType == "fluid") {
-            if (grid[hashFunction(cell.second.pos[0] - 1, cell.second.pos[1], cell.second.pos[2])] != "solid") {
+            if (grid[hashFunction(cell.second.pos[0] - 1, cell.second.pos[1], cell.second.pos[2])].cellType != "solid") {
                 cell.second.u[0] = cell.second.u[0] - deltaT / (density * h) * (
                     cell.second.p - grid[hashFunction(cell.second.pos[0] - 1, cell.second.pos[1], cell.second.pos[2])].p);
             }
-            if (grid[hashFunction(cell.second.pos[0], cell.second.pos[1] - 1, cell.second.pos[2])] != "solid") {
+            if (grid[hashFunction(cell.second.pos[0], cell.second.pos[1] - 1, cell.second.pos[2])].cellType != "solid") {
                 cell.second.u[1] = cell.second.u[1] - deltaT / (density * h) * (
                     cell.second.p - grid[hashFunction(cell.second.pos[0], cell.second.pos[1] - 1, cell.second.pos[2])].p);
             }
-            if (grid[hashFunction(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2] - 1)] != "solid") {
+            if (grid[hashFunction(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2] - 1)].cellType != "solid") {
                 cell.second.u[2] = cell.second.u[2] - deltaT / (density * h) * (
                     cell.second.p - grid[hashFunction(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2] - 1)].p);
             }
@@ -667,7 +667,7 @@ int main(void) {
 
     // Extrapolate fluid velocities into surrounding cells or Section 4.1 Step 3f
     for (auto cell : grid) {
-        if (cell.second.cellType == "fluid) {
+        if (cell.second.cellType == "fluid") {
             cell.second.layer = 0;
         }
         else {
@@ -675,12 +675,12 @@ int main(void) {
         }
     }
 
-    for (int i = 0; i < std::max(2, std::ceil(kCFL)) + 1; i++) {
+    for (int i = 0; i < std::max(2, int(std::ceil(kCFL))) + 1; i++) {
         for (auto cell : grid) {
             if (cell.second.layer == -1) {
                 // Assuming neighbors means the six cells directly neighboring the current cell
                 int neighborCount = 0;
-                std::vector<float> totalNeighborVelocity = 0.0;
+                std::vector<float> totalNeighborVelocity = {0, 0, 0};
                 
                 for (int j = 0; j < 6; j++) {
                     int neighborX = cell.second.pos[0];
@@ -721,7 +721,19 @@ int main(void) {
                     }
                 }
 
-                if (cell.
+                if (neighborCount > 0) {
+                    if (grid[hashFunction(cell.second.pos[0] - 1, cell.second.pos[1], cell.second.pos[2])].cellType != "fluid") {
+                        cell.second.u[0] = totalNeighborVelocity[0] / neighborCount;
+                    }
+                    if (grid[hashFunction(cell.second.pos[0], cell.second.pos[1] - 1, cell.second.pos[2])].cellType != "fluid") {
+                        cell.second.u[1] = totalNeighborVelocity[1] / neighborCount;
+                    }
+                    if (grid[hashFunction(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2] - 1)].cellType != "fluid") {
+                        cell.second.u[2] = totalNeighborVelocity[2] / neighborCount;
+                    }
+
+                    cell.second.layer = i;
+                }
             }
         }
     }
