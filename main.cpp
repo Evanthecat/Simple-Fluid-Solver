@@ -737,4 +737,29 @@ int main(void) {
             }
         }
     }
+
+    // Set the velocities of solid cells or Section 4.1 Step 3g
+    // Assuming boundary cells always only have one side exposed to air or fluid
+    for (auto cell : grid) {
+        if (cell.second.cellType == "solid") {
+            if (grid[hashFunction(cell.second.pos[0] - 1, cell.second.pos[1], cell.second.pos[2])].cellType != "solid" && cell.second.u[0] > 0) {
+                cell.second.u[0] = 0;
+            }
+            else if (grid[hashFunction(cell.second.pos[0], cell.second.pos[1] - 1, cell.second.pos[2])].cellType != "solid" && cell.second.u[1] > 0) {
+                cell.second.u[1] = 0;
+            }
+            else if (grid[hashFunction(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2] - 1)].cellType != "solid" && cell.second.u[2] > 0) {
+                cell.second.u[2] = 0;
+            }
+            else if (grid[hashFunction(cell.second.pos[0] + 1, cell.second.pos[1], cell.second.pos[2])].cellType != "solid" && grid[hashFunction(cell.second.pos[0] + 1, cell.second.pos[1], cell.second.pos[2])].u[0] < 0) {
+                grid[hashFunction(cell.second.pos[0] + 1, cell.second.pos[1], cell.second.pos[2])].u[1] = 0;
+            }
+            else if (grid[hashFunction(cell.second.pos[0], cell.second.pos[1] + 1, cell.second.pos[2])].cellType != "solid" && grid[hashFunction(cell.second.pos[0], cell.second.pos[1] + 1, cell.second.pos[2])].u[1] < 0) {
+                grid[hashFunction(cell.second.pos[0], cell.second.pos[1] + 1, cell.second.pos[2])].u[1] = 0;
+            }
+            else if (grid[hashFunction(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2] + 1)].cellType != "solid" && grid[hashFunction(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2] + 1)].u[2] < 0) {
+                grid[hashFunction(cell.second.pos[0], cell.second.pos[1], cell.second.pos[2] + 1)].u[1] = 0;
+            }
+        }
+    }
 }
